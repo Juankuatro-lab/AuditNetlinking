@@ -1,4 +1,4 @@
-# Outil d'Analyse Netlinking SEO
+# Outil d'analyse netlinking SEO
 
 Un outil Streamlit avancé pour analyser et prioriser vos opportunités de netlinking en croisant les données Ahrefs et Google Search Console.
 

@@ -1,4 +1,4 @@
-# Outil d'analyse netlinking SEO
+# Audit de netlinking - Création d'une roadmap pour satelliser ta stratégie
 
 Un outil Streamlit avancé pour analyser et prioriser vos opportunités de netlinking en croisant les données Ahrefs et Google Search Console.
 
@@ -44,12 +44,12 @@ streamlit run app.py
 - Colonnes : Pages, Clics, Impressions, CTR, Position
 
 ### 5. Mots-clés stratégiques (optionnel)
-- Format : Excel ou CSV
+- Format : Excel (.xlsx, .xls) ou CSV
 - Colonnes suggérées : Keyword, Search Volume, Keyword Difficulty, CPC
 
 ### 6. Export SERPs (optionnel)
 - Données des top 10 pour vos mots-clés stratégiques
-- Format : Excel ou CSV
+- Format : Excel (.xlsx, .xls) ou CSV
 
 ## Algorithme de scoring
 
@@ -116,4 +116,4 @@ MIT License - Libre d'utilisation et de modification.
 
 ---
 
-**Développé pour optimiser vos campagnes de netlinking SEO**
+**Développé par [JC Espinosa](https://jc-espinosa.com) pour optimiser vos campagnes de netlinking SEO**

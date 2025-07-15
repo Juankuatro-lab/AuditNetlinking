@@ -1,4 +1,9 @@
-# Colonnes à afficher pour les pages
+# Tab 3: Referring Pages (si disponible)
+        if filtered_pages_df is not None and len(filtered_pages_df) > 0:
+            with tabs[current_tab_index]:
+                st.subheader("📄 Pages référentes prioritaires à cibler")
+                
+                # Colonnes à afficher pour les pages
                 page_display_columns = []
                 available_columns = filtered_pages_df.columns.tolist()
                 
@@ -73,11 +78,11 @@
                     avg_page_traffic = filtered_pages_df['Page traffic'].mean() if 'Page traffic' in filtered_pages_df.columns else 0
                     st.metric("Trafic page moyen", f"{avg_page_traffic:.0f}")
             
-            tab_index += 1
+            current_tab_index += 1
         
-        # Onglet Analyse SERPs
+        # Tab 4: Analyse SERPs (si disponible)
         if serp_analysis is not None and len(serp_analysis) > 0:
-            with tabs[tab_index]:  # Analyse SERPs
+            with tabs[current_tab_index]:
                 st.subheader("🎯 Analyse des SERPs - Benchmarks par mot-clé")
                 
                 if serp_benchmarks and serp_recommendations:
@@ -202,10 +207,10 @@
                 else:
                     st.warning("Aucune analyse SERP disponible. Vérifiez le format de vos fichiers.")
             
-            tab_index += 1
+            current_tab_index += 1
         
-        # Onglet Fichiers d'entrée
-        with tabs[tab_index]:
+        # Tab N-1: Fichiers d'entrée
+        with tabs[current_tab_index]:
             st.subheader("📁 Fichiers d'entrée - Aperçu des données")
             
             # Sous-onglets pour les différents fichiers
@@ -261,9 +266,10 @@
             else:
                 st.info("Aucun fichier optionnel chargé. Uploadez vos fichiers GSC et mots-clés stratégiques pour enrichir l'analyse.")
         
-        # Onglet Export CSV
-        tab_index += 1
-        with tabs[tab_index]:
+        current_tab_index += 1
+        
+        # Tab N: Export CSV
+        with tabs[current_tab_index]:
             # Export des résultats
             st.subheader("💾 Télécharger les résultats")
             
@@ -1069,7 +1075,7 @@ if ahrefs_domains_file is not None:
         # Affichage des résultats avec onglets
         st.header("📊 Résultats de l'analyse")
         
-        # Créer les onglets
+        # Créer les onglets dynamiquement
         tabs_list = ["📈 Tableau de bord", "🎯 Referring Domains"]
         
         if filtered_pages_df is not None and len(filtered_pages_df) > 0:
@@ -1082,7 +1088,10 @@ if ahrefs_domains_file is not None:
         
         tabs = st.tabs(tabs_list)
         
-        with tabs[0]:  # Tableau de bord
+        current_tab_index = 0
+        
+        # Tab 1: Tableau de bord
+        with tabs[current_tab_index]:
             # Métriques principales
             col1, col2, col3, col4 = st.columns(4)
             
@@ -1204,7 +1213,10 @@ if ahrefs_domains_file is not None:
                         st.write("**Concurrents ayant des liens :**")
                         st.write(" • ".join(linked_competitors))
         
-        with tabs[1]:  # Referring Domains
+        current_tab_index += 1
+        
+        # Tab 2: Referring Domains
+        with tabs[current_tab_index]:
             # Tableau détaillé des domaines
             st.subheader("📋 Tableau détaillé des opportunités - Referring Domains")
             
@@ -1250,8 +1262,6 @@ if ahrefs_domains_file is not None:
                 }
             )
         
-        tab_index = 2
+        current_tab_index += 1
         
-        if filtered_pages_df is not None and len(filtered_pages_df) > 0:
-            with tabs[tab_index]:  # Referring Pages
-                st.subheader("📄 Pages référentes prioritaires à cibler")
+        # Tab 3: Referring

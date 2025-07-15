@@ -1209,46 +1209,38 @@ else:
     with st.expander("📋 Comment utiliser cet outil - Étapes à suivre"):
         st.markdown("""
         1. **Exportez vos données depuis Ahrefs :**
-           - Allez dans l'outil "Link Intersect"
-           - Ajoutez votre site + vos concurrents
-           - Exportez les "Referring Domains" et "Referring Pages"
+           * Allez dans l'outil "Link Intersect"
+           * Ajoutez votre site + vos concurrents
+           * Exportez les "Referring Domains" et "Referring Pages"
         
         2. **Exportez vos données depuis Google Search Console :**
-           - Allez dans "Performances" > "Requêtes"
-           - Exportez les données des requêtes et des pages
+           * Allez dans "Performances" > "Requêtes"
+           * Exportez les données des requêtes et des pages
         
         3. **Préparez vos mots-clés stratégiques :**
-           - Format Excel ou CSV avec colonnes : Keyword, Search Volume, Keyword Difficulty
+           * Format Excel ou CSV avec colonnes : Keyword, Search Volume, Keyword Difficulty
         
-        4. **[NOUVEAU] Exports SERPs Ahrefs (Optionnel) :**
-           - Exportez les top 10 de vos mots-clés stratégiques depuis Ahrefs
-           - Uploadez jusqu'à 10 fichiers pour l'analyse micro des besoins
+        4. **[OPTIONNEL] Exports SERPs Ahrefs pour analyse micro :**
+           * Exportez les top 10 de vos mots-clés prioritaires depuis Ahrefs
+           * Uploadez jusqu'à 10 fichiers CSV pour des benchmarks précis
         
-        5. **Uploadez tous les fichiers** dans la barre latérale
-        
-        6. **Configurez les filtres** selon vos besoins
+        5. **Uploadez tous les fichiers dans la barre latérale et configurez les filtres**
         """)
     
     with st.expander("🎯 Ce que fait l'outil"):
         st.markdown("""
-        - **Analyse les gaps concurrentiels** : Identifie les sites qui font des liens vers vos concurrents mais pas vers vous
-        - **Calcule un score de priorité** basé sur :
-          - Domain Rating (20%)
-          - Trafic du domaine (20%)  
-          - Gap concurrentiel (30%)
-          - Pertinence thématique (30%)
-        - **[NOUVEAU] Analyse micro des SERPs** : Benchmarks détaillés par mot-clé avec recommandations
-        - **Fournit des analyses complètes** avec tableaux de bord, graphiques et exports CSV
+        * **Analyse les gaps concurrentiels** : Identifie les sites qui font des liens vers vos concurrents mais pas vers vous
+        * **Calcule un score de priorité intelligent** basé sur DR (20%), Trafic (20%), Gap concurrentiel (30%), Pertinence thématique (30%)
+        * **Analyse micro des SERPs** : Benchmarks détaillés par mot-clé avec recommandations pour atteindre chaque position cible
         """)
     
     with st.expander("📊 Résultats obtenus"):
         st.markdown("""
-        - Tableau de bord avec graphiques interactifs
-        - Liste des domaines prioritaires à contacter
-        - Liste des pages référentes spécifiques à cibler
-        - **[NOUVEAU] Analyse SERPs** avec benchmarks et recommandations par mot-clé
-        - Fichiers CSV structurés pour vos campagnes
-        - Aperçu de tous vos fichiers d'entrée
+        * **Tableau de bord interactif** avec graphiques et métriques clés
+        * **Liste priorisée des domaines** et pages référentes à contacter
+        * **Analyse SERPs avec benchmarks** : "Pour être #1 sur X, visez Y backlinks et DR Z"
+        * **Exports CSV structurés** pour vos campagnes et rapports clients
+        * **Recommandations automatiques** basées sur l'analyse de la concurrence
         """)
     
     # Afficher un exemple de structure attendue
@@ -1264,7 +1256,7 @@ else:
         Referring page title | Referring page URL | Domain | Domain rating | UR | Page traffic | Intersect | www.monsite.com | ...
         ```
         
-        **[NOUVEAU] Ahrefs - Export SERPs :**
+        **Ahrefs - Export SERPs :**
         ```
         Keyword | URL | Position | Backlinks | Referring Domains | Domain rating | URL rating | Traffic | ...
         ```

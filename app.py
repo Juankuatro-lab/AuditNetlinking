@@ -3,11 +3,22 @@ import pandas as pd
 import numpy as np
 import re
 from io import StringIO
-import chardet
 from urllib.parse import urlparse
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+
+# Imports conditionnels pour éviter les erreurs
+try:
+    import chardet
+except ImportError:
+    chardet = None
+    st.warning("chardet non disponible - détection d'encodage limitée")
+
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+except ImportError:
+    st.error("Plotly non disponible - installez avec: pip install plotly")
+    st.stop()
 
 # Configuration de la page
 st.set_page_config(

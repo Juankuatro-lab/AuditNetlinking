@@ -118,20 +118,53 @@ def calculate_thematic_relevance_optimized(domains_series, keywords_data=None, p
 def calculate_priority_score_vectorized(df, keywords_data=None, pages_data=None):
     """Version vectorisée du calcul de score de priorité"""
     
+    # Identifier la colonne du domaine (peut avoir différents noms)
+    domain_column = None
+    possible_domain_columns = ['Domain', 'domain', 'Domaine', 'domaine']
+    for col in possible_domain_columns:
+        if col in df.columns:
+            domain_column = col
+            break
+    
+    if domain_column is None:
+        st.error("Impossible de trouver la colonne des domaines dans le fichier Ahrefs. Colonnes disponibles: " + ", ".join(df.columns))
+        return pd.Series(0, index=df.index), pd.Series(0, index=df.index)
+    
+    # Identifier les colonnes DR et Traffic (avec variations possibles)
+    dr_column = None
+    traffic_column = None
+    
+    possible_dr_columns = ['Domain rating', 'domain rating', 'DR', 'dr', 'Domain Rating']
+    possible_traffic_columns = ['Domain traffic', 'domain traffic', 'Traffic', 'traffic', 'Domain Traffic']
+    
+    for col in possible_dr_columns:
+        if col in df.columns:
+            dr_column = col
+            break
+    
+    for col in possible_traffic_columns:
+        if col in df.columns:
+            traffic_column = col
+            break
+    
     # Métriques de base (vectorisées)
-    dr = pd.to_numeric(df['Domain rating'], errors='coerce').fillna(0)
-    traffic = pd.to_numeric(df['Domain traffic'], errors='coerce').fillna(0)
+    dr = pd.to_numeric(df[dr_column], errors='coerce').fillna(0) if dr_column else pd.Series(0, index=df.index)
+    traffic = pd.to_numeric(df[traffic_column], errors='coerce').fillna(0) if traffic_column else pd.Series(0, index=df.index)
     
     # Identifier les colonnes des concurrents
     competitor_columns = [col for col in df.columns if col.startswith('www.') and 'explore-grandest.com' not in col]
     
     # Calcul vectorisé du gap concurrentiel
-    competitor_data = df[competitor_columns].fillna(0)
-    competitor_links = (competitor_data > 0).sum(axis=1)
-    gap_normalized = (competitor_links / len(competitor_columns)) * 100 if competitor_columns else pd.Series(0, index=df.index)
+    if competitor_columns:
+        competitor_data = df[competitor_columns].fillna(0)
+        competitor_links = (competitor_data > 0).sum(axis=1)
+        gap_normalized = (competitor_links / len(competitor_columns)) * 100
+    else:
+        competitor_links = pd.Series(0, index=df.index)
+        gap_normalized = pd.Series(0, index=df.index)
     
     # Calcul de la pertinence thématique (version optimisée et cachée)
-    thematic_scores = calculate_thematic_relevance_optimized(df['Domain'], keywords_data, pages_data)
+    thematic_scores = calculate_thematic_relevance_optimized(df[domain_column], keywords_data, pages_data)
     
     # Score final avec pondération (vectorisé)
     priority_scores = (
@@ -395,9 +428,50 @@ if ahrefs_domains_file is not None:
         with st.spinner("Application des filtres et calcul des scores..."):
             filtered_df = ahrefs_domains_df.copy()
             
+            # Identifier les colonnes automatiquement
+            dr_column = None
+            traffic_column = None
+            domain_column = None
+            
+            possible_dr_columns = ['Domain rating', 'domain rating', 'DR', 'dr', 'Domain Rating']
+            possible_traffic_columns = ['Domain traffic', 'domain traffic', 'Traffic', 'traffic', 'Domain Traffic']
+            possible_domain_columns = ['Domain', 'domain', 'Domaine', 'domaine']
+            
+            for col in possible_dr_columns:
+                if col in filtered_df.columns:
+                    dr_column = col
+                    break
+            
+            for col in possible_traffic_columns:
+                if col in filtered_df.columns:
+                    traffic_column = col
+                    break
+            
+            for col in possible_domain_columns:
+                if col in filtered_df.columns:
+                    domain_column = col
+                    break
+            
+            if not domain_column:
+                st.error("❌ Impossible de trouver la colonne des domaines. Colonnes disponibles: " + ", ".join(filtered_df.columns[:10]))
+                st.stop()
+            
             # Convertir les colonnes numériques (vectorisé)
-            filtered_df['Domain rating'] = pd.to_numeric(filtered_df['Domain rating'], errors='coerce').fillna(0)
-            filtered_df['Domain traffic'] = pd.to_numeric(filtered_df['Domain traffic'], errors='coerce').fillna(0)
+            if dr_column:
+                filtered_df['Domain rating'] = pd.to_numeric(filtered_df[dr_column], errors='coerce').fillna(0)
+            else:
+                filtered_df['Domain rating'] = 0
+                st.warning("⚠️ Colonne Domain Rating non trouvée")
+            
+            if traffic_column:
+                filtered_df['Domain traffic'] = pd.to_numeric(filtered_df[traffic_column], errors='coerce').fillna(0)
+            else:
+                filtered_df['Domain traffic'] = 0
+                st.warning("⚠️ Colonne Domain Traffic non trouvée")
+            
+            # Normaliser le nom de la colonne domaine
+            if domain_column != 'Domain':
+                filtered_df['Domain'] = filtered_df[domain_column]
             
             # Appliquer les filtres (vectorisé)
             mask = (

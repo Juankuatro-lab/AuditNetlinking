@@ -602,7 +602,7 @@ if ahrefs_domains_file is not None:
             st.subheader("📁 Fichiers d'entrée - Aperçu des données")
             
             # Sous-onglets pour les différents fichiers
-            if keywords_data is not None or pages_data is not None or gsc_keywords_data is not None:
+            if keywords_data is not None or pages_data is not None or 'gsc_keywords_data' in locals():
                 sub_tabs = []
                 sub_tab_names = []
                 
@@ -812,149 +812,62 @@ if ahrefs_domains_file is not None:
                     else:
                         st.button("Aucun DR élevé", disabled=True, use_container_width=True)
             else:
-                st.warning("Aucun domaine ne correspond aux critères de filtrage sélectionnés.")Concurrents_Lies',
-                'gap_opportunity': 'Opportunite_Gap',
-                'traffic_potential': 'Potentiel_Trafic'
-            }
-            
-            # Ajouter les colonnes des concurrents avec des noms plus clairs
-            for i, comp in enumerate(other_competitors):
-                export_columns[comp] = f'Concurrent_{i+1}_Liens'
-            
-            export_df = export_df.rename(columns=export_columns)
-            
-            # Sélectionner et ordonner les colonnes importantes
-            key_columns = [
-                'Domaine', 'Domain_Rating', 'Trafic_Mensuel', 'Score_Priorite',
-                'Nb_Concurrents_Lies', 'Opportunite_Gap', 'Potentiel_Trafic'
-            ]
-            
-            # Ajouter les colonnes concurrents
-            competitor_columns_renamed = [f'Concurrent_{i+1}_Liens' for i in range(len(other_competitors))]
-            final_columns = key_columns + competitor_columns_renamed
-            
-            # Créer le DataFrame final
-            final_export_df = export_df[final_columns].round(2)
-            
-            # Informations sur l'analyse
-            st.write(f"**Nombre de domaines analysés :** {len(filtered_df)}")
-            st.write(f"**Score de priorité moyen :** {filtered_df['priority_score'].mean():.2f}/100")
-            st.write(f"**Domain Rating moyen :** {filtered_df['Domain rating'].mean():.1f}")
-            
-            # Bouton de téléchargement principal
-            csv_data = final_export_df.to_csv(index=False, encoding='utf-8')
-            
-            st.download_button(
-                label="Télécharger l'analyse complète (CSV)",
-                data=csv_data,
-                file_name=f"audit_netlinking_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-            
-            # Options de téléchargement par segment
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                top_50 = final_export_df.head(50)
-                csv_top_50 = top_50.to_csv(index=False, encoding='utf-8')
-                st.download_button(
-                    label="Top 50 prioritaires",
-                    data=csv_top_50,
-                    file_name=f"top_50_netlinking_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            
-            with col2:
-                high_priority = final_export_df[final_export_df['Score_Priorite'] >= 70]
-                if len(high_priority) > 0:
-                    csv_high_priority = high_priority.to_csv(index=False, encoding='utf-8')
-                    st.download_button(
-                        label=f"Priorité maximale ({len(high_priority)})",
-                        data=csv_high_priority,
-                        file_name=f"priorite_max_netlinking_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                else:
-                    st.button(
-                        "Aucun domaine priorité max",
-                        disabled=True,
-                        use_container_width=True
-                    )
-            
-            with col3:
-                high_gap = final_export_df[final_export_df['Nb_Concurrents_Lies'] >= max_competitors - 1]
-                if len(high_gap) > 0:
-                    csv_high_gap = high_gap.to_csv(index=False, encoding='utf-8')
-                    st.download_button(
-                        label=f"Gaps importants ({len(high_gap)})",
-                        data=csv_high_gap,
-                        file_name=f"gaps_importants_netlinking_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                else:
-                    st.button(
-                        "Aucun gap important",
-                        disabled=True,
-                        use_container_width=True
-                    )
-        else:
-            st.warning("Aucun domaine ne correspond aux critères de filtrage sélectionnés.")
+                st.warning("Aucun domaine ne correspond aux critères de filtrage sélectionnés.")
 
 else:
     # Page d'accueil sans fichiers
-    st.markdown("""
-    ## Comment utiliser cet outil ?
+    st.markdown("**Commencez par uploader votre export Ahrefs 'Referring Domains' dans la barre latérale !**")
     
-    ### Étapes à suivre :
+    with st.expander("📋 Comment utiliser cet outil - Étapes à suivre"):
+        st.markdown("""
+        1. **Exportez vos données depuis Ahrefs :**
+           - Allez dans l'outil "Link Intersect"
+           - Ajoutez votre site + vos concurrents
+           - Exportez les "Referring Domains" et "Referring Pages"
+        
+        2. **Exportez vos données depuis Google Search Console :**
+           - Allez dans "Performances" > "Requêtes"
+           - Exportez les données des requêtes et des pages
+        
+        3. **Préparez vos mots-clés stratégiques :**
+           - Format Excel ou CSV avec colonnes : Keyword, Search Volume, Keyword Difficulty
+        
+        4. **Uploadez tous les fichiers** dans la barre latérale
+        
+        5. **Configurez les filtres** selon vos besoins
+        """)
     
-    1. **Exportez vos données depuis Ahrefs :**
-       - Allez dans l'outil "Link Intersect"
-       - Ajoutez votre site + vos concurrents
-       - Exportez les "Referring Domains" et "Referring Pages"
+    with st.expander("🎯 Ce que fait l'outil"):
+        st.markdown("""
+        - **Analyse les gaps concurrentiels** : Identifie les sites qui font des liens vers vos concurrents mais pas vers vous
+        - **Calcule un score de priorité** basé sur :
+          - Domain Rating (20%)
+          - Trafic du domaine (20%)  
+          - Gap concurrentiel (30%)
+          - Pertinence thématique (30%)
+        - **Fournit des analyses complètes** avec tableaux de bord, graphiques et exports CSV
+        """)
     
-    2. **Exportez vos données depuis Google Search Console :**
-       - Allez dans "Performances" > "Requêtes"
-       - Exportez les données des requêtes et des pages
-    
-    3. **Préparez vos mots-clés stratégiques :**
-       - Format Excel ou CSV avec colonnes : Keyword, Search Volume, Keyword Difficulty
-    
-    4. **Uploadez tous les fichiers** dans la barre latérale
-    
-    5. **Configurez les filtres** selon vos besoins
-    
-    ### Ce que fait l'outil :
-    
-    - **Analyse les gaps concurrentiels** : Identifie les sites qui font des liens vers vos concurrents mais pas vers vous
-    - **Calcule un score de priorité** basé sur :
-      - Domain Rating (20%)
-      - Trafic du domaine (20%)  
-      - Gap concurrentiel (30%)
-      - Pertinence thématique (30%)
-    - **Fournit un fichier CSV** avec les résultats priorisés pour vos campagnes de netlinking
-    
-    ### Résultats obtenus :
-    
-    - Fichier CSV avec les domaines priorisés
-    - Score de priorité pour chaque domaine
-    - Métriques détaillées (DR, trafic, gaps concurrentiels)
-    - Données segmentées par niveau de priorité
-    
-    **Commencez par uploader votre export Ahrefs "Referring Domains" dans la barre latérale !**
-    """)
+    with st.expander("📊 Résultats obtenus"):
+        st.markdown("""
+        - Tableau de bord avec graphiques interactifs
+        - Liste des domaines prioritaires à contacter
+        - Liste des pages référentes spécifiques à cibler
+        - Fichiers CSV structurés pour vos campagnes
+        - Aperçu de tous vos fichiers d'entrée
+        """)
     
     # Afficher un exemple de structure attendue
-    st.subheader("Structure des fichiers attendus")
-    
-    with st.expander("Voir les formats de fichiers attendus"):
+    with st.expander("📁 Structure des fichiers attendus"):
         st.markdown("""
         **Ahrefs - Referring Domains :**
         ```
         Domain | Domain rating | Domain traffic | Intersect | www.monsite.com | www.concurrent1.com | ...
+        ```
+        
+        **Ahrefs - Referring Pages :**
+        ```
+        Referring page title | Referring page URL | Domain | Domain rating | UR | Page traffic | Intersect | www.monsite.com | ...
         ```
         
         **GSC - Requêtes :**

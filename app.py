@@ -1,4 +1,14 @@
-import streamlit as st
+st.button("Aucun DR élevé", disabled=True, use_container_width=True)
+                
+                # Export des analyses SERPs
+                if serp_benchmarks and serp_recommendations:
+                    st.write("**🎯 Analyse SERPs**")
+                    
+                    # Préparer les données d'export SERPs
+                    serp_export_data = []
+                    
+                    for keyword, data in serp_benchmarks.items():
+                        keyword_recs = serp_recommendations.get(keyword, {}).get('recommendations', {})import streamlit as st
 import pandas as pd
 import numpy as np
 import re
@@ -115,7 +125,143 @@ def calculate_thematic_relevance_optimized(domains_series, keywords_data=None, p
     
     return relevance_scores
 
+def analyze_serp_data(serp_files):
+    """Analyse les fichiers SERPs pour extraire les benchmarks"""
+    all_serp_data = []
+    
+    for serp_file in serp_files:
+        try:
+            # Lire le fichier SERP avec la même méthode que les autres fichiers Ahrefs
+            serp_df = read_ahrefs_csv(serp_file)
+            if serp_df is not None:
+                all_serp_data.append(serp_df)
+        except Exception as e:
+            st.warning(f"Erreur lors de la lecture du fichier SERP {serp_file.name}: {str(e)}")
+    
+    if not all_serp_data:
+        return None
+    
+    # Combiner tous les DataFrames SERP
+    combined_serp = pd.concat(all_serp_data, ignore_index=True)
+    
+    # Nettoyer les données
+    numeric_columns = ['Position', 'Backlinks', 'Referring Domains', 'Domain rating', 'URL rating', 'Traffic']
+    for col in numeric_columns:
+        if col in combined_serp.columns:
+            combined_serp[col] = pd.to_numeric(combined_serp[col], errors='coerce')
+    
+    # Filtrer les positions valides (1-10 pour le top 10)
+    combined_serp = combined_serp[(combined_serp['Position'] >= 1) & (combined_serp['Position'] <= 10)]
+    
+    return combined_serp
+
+def calculate_serp_benchmarks(serp_df):
+    """Calcule les benchmarks par position et par mot-clé"""
+    if serp_df is None or len(serp_df) == 0:
+        return None
+    
+    benchmarks = {}
+    
+    # Analyse par mot-clé
+    for keyword in serp_df['Keyword'].unique():
+        keyword_data = serp_df[serp_df['Keyword'] == keyword]
+        
+        if len(keyword_data) == 0:
+            continue
+        
+        keyword_benchmarks = {
+            'keyword': keyword,
+            'total_results': len(keyword_data),
+            'positions': {}
+        }
+        
+        # Benchmarks par groupes de positions
+        position_groups = {
+            'top_1': keyword_data[keyword_data['Position'] == 1],
+            'top_3': keyword_data[keyword_data['Position'] <= 3],
+            'top_5': keyword_data[keyword_data['Position'] <= 5],
+            'top_10': keyword_data[keyword_data['Position'] <= 10]
+        }
+        
+        for group_name, group_data in position_groups.items():
+            if len(group_data) > 0:
+                keyword_benchmarks['positions'][group_name] = {
+                    'backlinks_median': group_data['Backlinks'].median(),
+                    'backlinks_mean': group_data['Backlinks'].mean(),
+                    'referring_domains_median': group_data['Referring Domains'].median(),
+                    'referring_domains_mean': group_data['Referring Domains'].mean(),
+                    'domain_rating_median': group_data['Domain rating'].median(),
+                    'domain_rating_mean': group_data['Domain rating'].mean(),
+                    'url_rating_median': group_data['URL rating'].median(),
+                    'url_rating_mean': group_data['URL rating'].mean(),
+                    'traffic_median': group_data['Traffic'].median(),
+                    'traffic_mean': group_data['Traffic'].mean(),
+                    'count': len(group_data)
+                }
+        
+        benchmarks[keyword] = keyword_benchmarks
+    
+    return benchmarks
+
+def generate_serp_recommendations(benchmarks):
+    """Génère des recommandations basées sur les benchmarks"""
+    recommendations = {}
+    
+    for keyword, data in benchmarks.items():
+        recs = {
+            'keyword': keyword,
+            'recommendations': {}
+        }
+        
+        # Recommandations pour différentes positions cibles
+        for position_group in ['top_1', 'top_3', 'top_5']:
+            if position_group in data['positions']:
+                pos_data = data['positions'][position_group]
+                
+                target_name = {
+                    'top_1': 'position #1',
+                    'top_3': 'top 3',
+                    'top_5': 'top 5'
+                }[position_group]
+                
+                recs['recommendations'][position_group] = {
+                    'target': target_name,
+                    'backlinks_target': int(pos_data['backlinks_median']),
+                    'referring_domains_target': int(pos_data['referring_domains_median']),
+                    'domain_rating_target': int(pos_data['domain_rating_median']),
+                    'url_rating_target': int(pos_data['url_rating_median']),
+                    'description': f"Pour atteindre {target_name} sur '{keyword}' : visez ~{int(pos_data['backlinks_median'])} backlinks, ~{int(pos_data['referring_domains_median'])} domaines référents, et un DR d'au moins {int(pos_data['domain_rating_median'])}"
+                }
+        
+        recommendations[keyword] = recs
+    
 def calculate_priority_score_vectorized(df, keywords_data=None, pages_data=None):
+    """Version vectorisée du calcul de score de priorité"""
+    
+    # Métriques de base (vectorisées)
+    dr = pd.to_numeric(df['Domain rating'], errors='coerce').fillna(0)
+    traffic = pd.to_numeric(df['Domain traffic'], errors='coerce').fillna(0)
+    
+    # Identifier les colonnes des concurrents
+    competitor_columns = [col for col in df.columns if col.startswith('www.') and 'explore-grandest.com' not in col]
+    
+    # Calcul vectorisé du gap concurrentiel
+    competitor_data = df[competitor_columns].fillna(0)
+    competitor_links = (competitor_data > 0).sum(axis=1)
+    gap_normalized = (competitor_links / len(competitor_columns)) * 100 if competitor_columns else pd.Series(0, index=df.index)
+    
+    # Calcul de la pertinence thématique (version optimisée et cachée)
+    thematic_scores = calculate_thematic_relevance_optimized(df['Domain'], keywords_data, pages_data)
+    
+    # Score final avec pondération (vectorisé)
+    priority_scores = (
+        dr * 0.2 +  # Domain Rating (20%)
+        np.minimum(traffic / 10000, 100) * 0.2 +  # Traffic normalisé (20%)
+        gap_normalized * 0.3 +  # Gap concurrentiel (30%)
+        thematic_scores * 0.3  # Pertinence thématique (30%)
+    )
+    
+    return priority_scores.round(2), competitor_links
     """Version vectorisée du calcul de score de priorité"""
     
     # Métriques de base (vectorisées)
@@ -183,6 +329,15 @@ serp_data_file = st.sidebar.file_uploader(
     help="Données des SERPs pour les mots-clés stratégiques"
 )
 
+# Analyse SERPs - Nouveau
+st.sidebar.header("📊 Analyse SERPs (Optionnel)")
+serp_files = st.sidebar.file_uploader(
+    "Exports SERPs Ahrefs",
+    type=['csv'],
+    accept_multiple_files=True,
+    help="Uploadez jusqu'à 10 fichiers d'exports SERPs d'Ahrefs pour l'analyse micro des mots-clés"
+)
+
 # Paramètres de filtrage
 st.sidebar.header("🎛️ Paramètres de filtrage")
 
@@ -236,6 +391,9 @@ if ahrefs_domains_file is not None:
         keywords_data = None
         pages_data = None
         serp_data = None
+        serp_analysis = None
+        serp_benchmarks = None
+        serp_recommendations = None
         
         if strategic_keywords_file is not None:
             if strategic_keywords_file.name.endswith(('.xlsx', '.xls')):
@@ -263,6 +421,17 @@ if ahrefs_domains_file is not None:
             else:
                 serp_data = pd.read_csv(serp_data_file)
             st.success(f"✅ Données SERPs chargées : {len(serp_data)} entrées")
+        
+        # Traitement des fichiers SERPs multiples
+        if serp_files and len(serp_files) > 0:
+            with st.spinner("Analyse des fichiers SERPs..."):
+                serp_analysis = analyze_serp_data(serp_files)
+                if serp_analysis is not None:
+                    serp_benchmarks = calculate_serp_benchmarks(serp_analysis)
+                    serp_recommendations = generate_serp_recommendations(serp_benchmarks)
+                    st.success(f"✅ Analyse SERPs : {len(serp_files)} fichiers, {len(serp_analysis)} résultats analysés")
+                else:
+                    st.warning("❌ Aucune donnée SERP valide trouvée")
         
         # Appliquer les filtres et calculer les scores (OPTIMISÉ)
         with st.spinner("Application des filtres et calcul des scores..."):
@@ -335,23 +504,19 @@ if ahrefs_domains_file is not None:
         st.header("📊 Résultats de l'analyse")
         
         # Créer les onglets
-        if filtered_pages_df is not None and len(filtered_pages_df) > 0:
-            tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                "📈 Tableau de bord", 
-                "🎯 Referring Domains", 
-                "📄 Referring Pages", 
-                "📁 Fichiers d'entrée",
-                "💾 Export CSV"
-            ])
-        else:
-            tab1, tab2, tab3, tab4 = st.tabs([
-                "📈 Tableau de bord", 
-                "🎯 Referring Domains", 
-                "📁 Fichiers d'entrée",
-                "💾 Export CSV"
-            ])
+        tabs_list = ["📈 Tableau de bord", "🎯 Referring Domains"]
         
-        with tab1:
+        if filtered_pages_df is not None and len(filtered_pages_df) > 0:
+            tabs_list.append("📄 Referring Pages")
+        
+        if serp_analysis is not None and len(serp_analysis) > 0:
+            tabs_list.append("🎯 Analyse SERPs")
+        
+        tabs_list.extend(["📁 Fichiers d'entrée", "💾 Export CSV"])
+        
+        tabs = st.tabs(tabs_list)
+        
+        with tabs[0]:  # Tableau de bord
             # Métriques principales
             col1, col2, col3, col4 = st.columns(4)
             
@@ -473,7 +638,7 @@ if ahrefs_domains_file is not None:
                         st.write("**Concurrents ayant des liens :**")
                         st.write(" • ".join(linked_competitors))
         
-        with tab2:
+        with tabs[1]:  # Referring Domains
             # Tableau détaillé des domaines
             st.subheader("📋 Tableau détaillé des opportunités - Referring Domains")
             
@@ -519,8 +684,10 @@ if ahrefs_domains_file is not None:
                 }
             )
         
+        tab_index = 2
+        
         if filtered_pages_df is not None and len(filtered_pages_df) > 0:
-            with tab3:
+            with tabs[tab_index]:  # Referring Pages
                 st.subheader("📄 Pages référentes prioritaires à cibler")
                 
                 # Colonnes à afficher pour les pages
@@ -597,8 +764,140 @@ if ahrefs_domains_file is not None:
                 with col3:
                     avg_page_traffic = filtered_pages_df['Page traffic'].mean() if 'Page traffic' in filtered_pages_df.columns else 0
                     st.metric("Trafic page moyen", f"{avg_page_traffic:.0f}")
+            
+            tab_index += 1
         
-        with tab4:
+        # Onglet Analyse SERPs
+        if serp_analysis is not None and len(serp_analysis) > 0:
+            with tabs[tab_index]:  # Analyse SERPs
+                st.subheader("🎯 Analyse des SERPs - Benchmarks par mot-clé")
+                
+                if serp_benchmarks and serp_recommendations:
+                    # Sélecteur de mot-clé
+                    keywords_list = list(serp_benchmarks.keys())
+                    selected_keyword = st.selectbox(
+                        "Choisissez un mot-clé à analyser",
+                        keywords_list,
+                        help="Sélectionnez un mot-clé pour voir ses benchmarks détaillés"
+                    )
+                    
+                    if selected_keyword:
+                        keyword_data = serp_benchmarks[selected_keyword]
+                        keyword_recs = serp_recommendations[selected_keyword]
+                        
+                        # Métriques du mot-clé
+                        st.write(f"**📊 Analyse pour le mot-clé : '{selected_keyword}'**")
+                        st.write(f"Nombre de résultats analysés : {keyword_data['total_results']}")
+                        
+                        # Tableau des benchmarks
+                        st.subheader("📈 Benchmarks par position")
+                        
+                        benchmark_data = []
+                        for pos_group, data in keyword_data['positions'].items():
+                            position_name = {
+                                'top_1': 'Position #1',
+                                'top_3': 'Top 3',
+                                'top_5': 'Top 5',
+                                'top_10': 'Top 10'
+                            }.get(pos_group, pos_group)
+                            
+                            benchmark_data.append({
+                                'Position': position_name,
+                                'Backlinks (Médian)': int(data['backlinks_median']),
+                                'Backlinks (Moyen)': int(data['backlinks_mean']),
+                                'Domaines Référents (Médian)': int(data['referring_domains_median']),
+                                'DR (Médian)': int(data['domain_rating_median']),
+                                'UR (Médian)': int(data['url_rating_median']),
+                                'Trafic (Médian)': int(data['traffic_median']),
+                                'Échantillon': data['count']
+                            })
+                        
+                        benchmark_df = pd.DataFrame(benchmark_data)
+                        st.dataframe(benchmark_df, use_container_width=True)
+                        
+                        # Recommandations
+                        st.subheader("💡 Recommandations pour ce mot-clé")
+                        
+                        for pos_group, rec_data in keyword_recs['recommendations'].items():
+                            with st.expander(f"🎯 Objectif : {rec_data['target']}"):
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric("Backlinks cible", rec_data['backlinks_target'])
+                                    st.metric("Domaines référents cible", rec_data['referring_domains_target'])
+                                
+                                with col2:
+                                    st.metric("Domain Rating cible", rec_data['domain_rating_target'])
+                                    st.metric("URL Rating cible", rec_data['url_rating_target'])
+                                
+                                with col3:
+                                    st.info(rec_data['description'])
+                        
+                        # Graphiques
+                        st.subheader("📊 Visualisations")
+                        
+                        # Données pour le graphique
+                        serp_keyword_data = serp_analysis[serp_analysis['Keyword'] == selected_keyword]
+                        
+                        if len(serp_keyword_data) > 0:
+                            # Graphique scatter : Position vs Backlinks
+                            fig_scatter_serp = px.scatter(
+                                serp_keyword_data,
+                                x='Position',
+                                y='Backlinks',
+                                size='Domain rating',
+                                color='Referring Domains',
+                                hover_data=['URL', 'Traffic'],
+                                title=f"Position vs Backlinks pour '{selected_keyword}'",
+                                labels={
+                                    'Position': 'Position dans le SERP',
+                                    'Backlinks': 'Nombre de Backlinks',
+                                    'Referring Domains': 'Domaines Référents'
+                                }
+                            )
+                            fig_scatter_serp.update_xaxis(dtick=1, range=[0.5, 10.5])
+                            st.plotly_chart(fig_scatter_serp, use_container_width=True)
+                            
+                            # Graphique en barres : DR par position
+                            fig_bar_serp = px.box(
+                                serp_keyword_data,
+                                x='Position',
+                                y='Domain rating',
+                                title=f"Distribution du Domain Rating par position pour '{selected_keyword}'",
+                                labels={
+                                    'Position': 'Position dans le SERP',
+                                    'Domain rating': 'Domain Rating'
+                                }
+                            )
+                            st.plotly_chart(fig_bar_serp, use_container_width=True)
+                    
+                    # Vue d'ensemble de tous les mots-clés
+                    st.subheader("📋 Vue d'ensemble - Tous les mots-clés")
+                    
+                    overview_data = []
+                    for keyword, data in serp_benchmarks.items():
+                        if 'top_3' in data['positions']:
+                            top3_data = data['positions']['top_3']
+                            overview_data.append({
+                                'Mot-clé': keyword,
+                                'Résultats analysés': data['total_results'],
+                                'Backlinks Top 3 (Médian)': int(top3_data['backlinks_median']),
+                                'DR Top 3 (Médian)': int(top3_data['domain_rating_median']),
+                                'Domaines Référents Top 3 (Médian)': int(top3_data['referring_domains_median']),
+                                'Trafic Top 3 (Médian)': int(top3_data['traffic_median'])
+                            })
+                    
+                    if overview_data:
+                        overview_df = pd.DataFrame(overview_data)
+                        st.dataframe(overview_df, use_container_width=True)
+                
+                else:
+                    st.warning("Aucune analyse SERP disponible. Vérifiez le format de vos fichiers.")
+            
+            tab_index += 1
+        
+        # Onglet Fichiers d'entrée
+        with tabs[tab_index]:
             st.subheader("📁 Fichiers d'entrée - Aperçu des données")
             
             # Sous-onglets pour les différents fichiers
@@ -614,6 +913,8 @@ if ahrefs_domains_file is not None:
                     sub_tab_names.append("📄 GSC Pages")
                 if serp_data is not None:
                     sub_tab_names.append("🔍 SERPs")
+                if serp_analysis is not None:
+                    sub_tab_names.append("🎯 Analyse SERPs")
                 
                 if sub_tab_names:
                     sub_tabs = st.tabs(sub_tab_names)
@@ -642,10 +943,19 @@ if ahrefs_domains_file is not None:
                         with sub_tabs[tab_idx]:
                             st.write(f"**{len(serp_data)} entrées SERPs chargées**")
                             st.dataframe(serp_data.head(20), use_container_width=True)
+                        tab_idx += 1
+                    
+                    if serp_analysis is not None:
+                        with sub_tabs[tab_idx]:
+                            st.write(f"**{len(serp_analysis)} entrées d'analyse SERPs**")
+                            st.write(f"**Mots-clés analysés :** {', '.join(serp_analysis['Keyword'].unique()[:5])}...")
+                            st.dataframe(serp_analysis.head(20), use_container_width=True)
             else:
                 st.info("Aucun fichier optionnel chargé. Uploadez vos fichiers GSC et mots-clés stratégiques pour enrichir l'analyse.")
         
-        with (tab5 if filtered_pages_df is not None and len(filtered_pages_df) > 0 else tab4):
+        # Onglet Export CSV
+        tab_index += 1
+        with tabs[tab_index]:
             # Export des résultats
             st.subheader("💾 Télécharger les résultats")
             
@@ -810,7 +1120,85 @@ if ahrefs_domains_file is not None:
                             use_container_width=True
                         )
                     else:
-                        st.button("Aucun DR élevé", disabled=True, use_container_width=True)
+                        keyword_recs = serp_recommendations.get(keyword, {}).get('recommendations', {})
+                        
+                        # Données de base du mot-clé
+                        base_data = {
+                            'Mot_Cle': keyword,
+                            'Resultats_Analyses': data['total_results']
+                        }
+                        
+                        # Ajouter les benchmarks pour chaque groupe de positions
+                        for pos_group in ['top_1', 'top_3', 'top_5', 'top_10']:
+                            if pos_group in data['positions']:
+                                pos_data = data['positions'][pos_group]
+                                prefix = pos_group.upper()
+                                
+                                base_data.update({
+                                    f'{prefix}_Backlinks_Median': int(pos_data['backlinks_median']),
+                                    f'{prefix}_Backlinks_Mean': int(pos_data['backlinks_mean']),
+                                    f'{prefix}_RD_Median': int(pos_data['referring_domains_median']),
+                                    f'{prefix}_RD_Mean': int(pos_data['referring_domains_mean']),
+                                    f'{prefix}_DR_Median': int(pos_data['domain_rating_median']),
+                                    f'{prefix}_DR_Mean': int(pos_data['domain_rating_mean']),
+                                    f'{prefix}_UR_Median': int(pos_data['url_rating_median']),
+                                    f'{prefix}_UR_Mean': int(pos_data['url_rating_mean']),
+                                    f'{prefix}_Traffic_Median': int(pos_data['traffic_median']),
+                                    f'{prefix}_Count': pos_data['count']
+                                })
+                        
+                        # Ajouter les recommandations
+                        for rec_group in ['top_1', 'top_3', 'top_5']:
+                            if rec_group in keyword_recs:
+                                rec_data = keyword_recs[rec_group]
+                                rec_prefix = f'REC_{rec_group.upper()}'
+                                
+                                base_data.update({
+                                    f'{rec_prefix}_Backlinks_Target': rec_data['backlinks_target'],
+                                    f'{rec_prefix}_RD_Target': rec_data['referring_domains_target'],
+                                    f'{rec_prefix}_DR_Target': rec_data['domain_rating_target'],
+                                    f'{rec_prefix}_UR_Target': rec_data['url_rating_target'],
+                                    f'{rec_prefix}_Description': rec_data['description']
+                                })
+                        
+                        serp_export_data.append(base_data)
+                    
+                    # Créer le DataFrame d'export
+                    serp_export_df = pd.DataFrame(serp_export_data)
+                    
+                    # Export complet de l'analyse SERPs
+                    serp_csv = serp_export_df.to_csv(index=False, encoding='utf-8')
+                    st.download_button(
+                        label="📊 Analyse SERPs complète (CSV)",
+                        data=serp_csv,
+                        file_name=f"analyse_serps_benchmarks_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    
+                    # Export simplifié avec recommandations
+                    simplified_serp_data = []
+                    for keyword, recs in serp_recommendations.items():
+                        for pos_group, rec_data in recs['recommendations'].items():
+                            simplified_serp_data.append({
+                                'Mot_Cle': keyword,
+                                'Objectif': rec_data['target'],
+                                'Backlinks_Cible': rec_data['backlinks_target'],
+                                'Domaines_Referents_Cible': rec_data['referring_domains_target'],
+                                'DR_Cible': rec_data['domain_rating_target'],
+                                'UR_Cible': rec_data['url_rating_target'],
+                                'Recommandation': rec_data['description']
+                            })
+                    
+                    simplified_serp_df = pd.DataFrame(simplified_serp_data)
+                    simplified_csv = simplified_serp_df.to_csv(index=False, encoding='utf-8')
+                    st.download_button(
+                        label="🎯 Recommandations SERPs (CSV)",
+                        data=simplified_csv,
+                        file_name=f"recommandations_serps_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
             else:
                 st.warning("Aucun domaine ne correspond aux critères de filtrage sélectionnés.")
 
@@ -832,9 +1220,13 @@ else:
         3. **Préparez vos mots-clés stratégiques :**
            - Format Excel ou CSV avec colonnes : Keyword, Search Volume, Keyword Difficulty
         
-        4. **Uploadez tous les fichiers** dans la barre latérale
+        4. **[NOUVEAU] Exports SERPs Ahrefs (Optionnel) :**
+           - Exportez les top 10 de vos mots-clés stratégiques depuis Ahrefs
+           - Uploadez jusqu'à 10 fichiers pour l'analyse micro des besoins
         
-        5. **Configurez les filtres** selon vos besoins
+        5. **Uploadez tous les fichiers** dans la barre latérale
+        
+        6. **Configurez les filtres** selon vos besoins
         """)
     
     with st.expander("🎯 Ce que fait l'outil"):
@@ -845,6 +1237,7 @@ else:
           - Trafic du domaine (20%)  
           - Gap concurrentiel (30%)
           - Pertinence thématique (30%)
+        - **[NOUVEAU] Analyse micro des SERPs** : Benchmarks détaillés par mot-clé avec recommandations
         - **Fournit des analyses complètes** avec tableaux de bord, graphiques et exports CSV
         """)
     
@@ -853,6 +1246,7 @@ else:
         - Tableau de bord avec graphiques interactifs
         - Liste des domaines prioritaires à contacter
         - Liste des pages référentes spécifiques à cibler
+        - **[NOUVEAU] Analyse SERPs** avec benchmarks et recommandations par mot-clé
         - Fichiers CSV structurés pour vos campagnes
         - Aperçu de tous vos fichiers d'entrée
         """)
@@ -868,6 +1262,11 @@ else:
         **Ahrefs - Referring Pages :**
         ```
         Referring page title | Referring page URL | Domain | Domain rating | UR | Page traffic | Intersect | www.monsite.com | ...
+        ```
+        
+        **[NOUVEAU] Ahrefs - Export SERPs :**
+        ```
+        Keyword | URL | Position | Backlinks | Referring Domains | Domain rating | URL rating | Traffic | ...
         ```
         
         **GSC - Requêtes :**

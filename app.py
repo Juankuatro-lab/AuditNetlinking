@@ -634,7 +634,11 @@ if ahrefs_domains_file is not None:
                         max_value=100,
                     ),
                     "DR": st.column_config.NumberColumn(
-                        "DR",                    ),
+                        "DR",
+                        help="Domain Rating Ahrefs",
+                        min_value=0,
+                        max_value=100,
+                        format="%d",                    ),
                     "Trafic": st.column_config.NumberColumn(
                         "Trafic",
                         help="Trafic mensuel estimé",
@@ -1274,7 +1278,3 @@ else:
 # Footer
 st.markdown("---")
 st.markdown("**Développé par [JC Espinosa](https://jc-espinosa.com) pour optimiser vos campagnes de netlinking SEO**")
-                        help="Domain Rating Ahrefs",
-                        min_value=0,
-                        max_value=100,
-                        format="%d",

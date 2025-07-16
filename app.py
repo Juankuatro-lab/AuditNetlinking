@@ -651,8 +651,7 @@ if ahrefs_domains_file is not None:
             
             top_3 = filtered_df.head(3)
             
-            st.write("**🏆 Top 3 des domaines à contacter en priorité :**")
-            for i, (_, domain) in enumerate(top_3.iterrows(), 1):
+            st.write("**🏆 Top 3 des domaines à contacter en priorité :**")            for i, (_, domain) in enumerate(top_3.iterrows(), 1):
                 with st.expander(f"#{i} - {domain['Domain']} (Score: {domain['priority_score']})"):
                     col1, col2 = st.columns(2)
                     

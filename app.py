@@ -25,9 +25,17 @@ def detect_encoding(file_content):
     detected = chardet.detect(file_content)
     return detected['encoding'] if detected['confidence'] > 0.7 else 'utf-8'
 
-def read_ahrefs_csv(uploaded_file):
-    """Lit un fichier CSV Ahrefs avec gestion des encodages"""
+def read_file_universal(uploaded_file):
+    """Lit un fichier CSV ou Excel avec gestion des encodages"""
     try:
+        file_extension = uploaded_file.name.split('.')[-1].lower()
+        
+        # Gestion des fichiers Excel
+        if file_extension in ['xlsx', 'xls']:
+            df = pd.read_excel(uploaded_file)
+            return df
+        
+        # Gestion des fichiers CSV (code existant)
         content = uploaded_file.read()
         
         try:
@@ -42,6 +50,13 @@ def read_ahrefs_csv(uploaded_file):
         try:
             uploaded_file.seek(0)
             df = pd.read_csv(uploaded_file, encoding='utf-8', sep='\t')
+            return df
+        except:
+            pass
+        
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, encoding='utf-8', sep=',')
             return df
         except:
             pass
@@ -207,11 +222,17 @@ def analyze_serp_data(serp_files):
     
     for serp_file in serp_files:
         try:
-            content = serp_file.read()
-            decoded_content = content.decode('utf-16le')
-            decoded_content = decoded_content.replace('\x00', '').replace('\ufeff', '')
+            file_extension = serp_file.name.split('.')[-1].lower()
             
-            serp_df = pd.read_csv(StringIO(decoded_content), sep='\t')
+            # Gestion des fichiers Excel
+            if file_extension in ['xlsx', 'xls']:
+                serp_df = pd.read_excel(serp_file)
+            else:
+                # Gestion CSV (code existant)
+                content = serp_file.read()
+                decoded_content = content.decode('utf-16le')
+                decoded_content = decoded_content.replace('\x00', '').replace('\ufeff', '')
+                serp_df = pd.read_csv(StringIO(decoded_content), sep='\t')
             
             if len(serp_df) == 0:
                 continue
@@ -321,26 +342,26 @@ st.sidebar.header("📁 Upload des fichiers")
 
 ahrefs_domains_file = st.sidebar.file_uploader(
     "Export Ahrefs - Referring Domains",
-    type=['csv'],
-    help="Export CSV des domaines référents depuis Ahrefs"
+    type=['csv', 'xlsx', 'xls'],
+    help="Export CSV ou Excel des domaines référents depuis Ahrefs"
 )
 
 ahrefs_pages_file = st.sidebar.file_uploader(
     "Export Ahrefs - Referring Pages",
-    type=['csv'],
-    help="Export CSV des pages référentes depuis Ahrefs"
+    type=['csv', 'xlsx', 'xls'],
+    help="Export CSV ou Excel des pages référentes depuis Ahrefs"
 )
 
 gsc_keywords_file = st.sidebar.file_uploader(
     "Export GSC - Requêtes",
-    type=['csv'],
-    help="Export CSV des requêtes depuis Google Search Console"
+    type=['csv', 'xlsx', 'xls'],
+    help="Export CSV ou Excel des requêtes depuis Google Search Console"
 )
 
 gsc_pages_file = st.sidebar.file_uploader(
     "Export GSC - Pages",
-    type=['csv'],
-    help="Export CSV des pages depuis Google Search Console"
+    type=['csv', 'xlsx', 'xls'],
+    help="Export CSV ou Excel des pages depuis Google Search Console"
 )
 
 strategic_keywords_file = st.sidebar.file_uploader(
@@ -351,9 +372,9 @@ strategic_keywords_file = st.sidebar.file_uploader(
 
 serp_analysis_files = st.sidebar.file_uploader(
     "Analyse SERPs (Optionnel)",
-    type=['csv'],
+    type=['csv', 'xlsx', 'xls'],
     accept_multiple_files=True,
-    help="Fichiers CSV d'analyse SERP Ahrefs (10 maximum) - Un fichier par mot-clé"
+    help="Fichiers CSV ou Excel d'analyse SERP Ahrefs (10 maximum) - Un fichier par mot-clé"
 )
 
 st.sidebar.header("🎛️ Paramètres de filtrage")
@@ -361,7 +382,7 @@ st.sidebar.header("🎛️ Paramètres de filtrage")
 if ahrefs_domains_file is not None:
     
     with st.spinner("Chargement des données Ahrefs Domains..."):
-        ahrefs_domains_df = read_ahrefs_csv(ahrefs_domains_file)
+        ahrefs_domains_df = read_file_universal(ahrefs_domains_file)
     
     if ahrefs_domains_df is not None:
         processed_df, file_type = detect_file_type_and_process(ahrefs_domains_df)
@@ -430,13 +451,19 @@ if ahrefs_domains_file is not None:
             st.success(f"✅ Mots-clés stratégiques chargés : {len(keywords_data)} mots-clés")
         
         if gsc_pages_file is not None:
-            pages_data = pd.read_csv(gsc_pages_file)
+            if gsc_pages_file.name.endswith(('.xlsx', '.xls')):
+                pages_data = pd.read_excel(gsc_pages_file)
+            else:
+                pages_data = pd.read_csv(gsc_pages_file)
             if 'CTR' in pages_data.columns:
                 pages_data['CTR'] = pages_data['CTR'].apply(clean_percentage)
             st.success(f"✅ Pages GSC chargées : {len(pages_data)} pages")
         
         if gsc_keywords_file is not None:
-            gsc_keywords_data = pd.read_csv(gsc_keywords_file)
+            if gsc_keywords_file.name.endswith(('.xlsx', '.xls')):
+                gsc_keywords_data = pd.read_excel(gsc_keywords_file)
+            else:
+                gsc_keywords_data = pd.read_csv(gsc_keywords_file)
             if 'CTR' in gsc_keywords_data.columns:
                 gsc_keywords_data['CTR'] = gsc_keywords_data['CTR'].apply(clean_percentage)
             st.success(f"✅ Requêtes GSC chargées : {len(gsc_keywords_data)} requêtes")
@@ -521,7 +548,7 @@ if ahrefs_domains_file is not None:
         filtered_pages_df = None
         if ahrefs_pages_file is not None:
             with st.spinner("Traitement des referring pages..."):
-                ahrefs_pages_df = read_ahrefs_csv(ahrefs_pages_file)
+                ahrefs_pages_df = read_file_universal(ahrefs_pages_file)
                 if ahrefs_pages_df is not None:
                     ahrefs_pages_df['Domain rating'] = pd.to_numeric(ahrefs_pages_df.get('Domain rating', 0), errors='coerce').fillna(0)
                     ahrefs_pages_df['Domain traffic'] = pd.to_numeric(ahrefs_pages_df.get('Domain traffic', 0), errors='coerce').fillna(0)
@@ -651,7 +678,9 @@ if ahrefs_domains_file is not None:
             
             top_3 = filtered_df.head(3)
             
-            st.write("**🏆 Top 3 des domaines à contacter en priorité :**")            for i, (_, domain) in enumerate(top_3.iterrows(), 1):
+            st.write("**🏆 Top 3 des domaines à contacter en priorité :**")
+            
+            for i, (_, domain) in enumerate(top_3.iterrows(), 1):
                 with st.expander(f"#{i} - {domain['Domain']} (Score: {domain['priority_score']})"):
                     col1, col2 = st.columns(2)
                     
@@ -1307,8 +1336,9 @@ else:
         ```
         Keyword | Search Volume | Keyword Difficulty | CPC | ...
         ```
+        
+        **📝 Note :** Tous les fichiers peuvent être au format CSV, Excel (.xlsx) ou ancien Excel (.xls)
         """)
 
 st.markdown("---")
 st.markdown("**Développé par [JC Espinosa](https://jc-espinosa.com) pour optimiser vos campagnes de netlinking SEO**")
-            
